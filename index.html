@@ -2,830 +2,882 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eyvallah Strike</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>NyxLabs | WAR: Touch Elite</title>
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; font-family: Arial, sans-serif; background-color: #2c3e50; color: #ecf0f1; height: 100vh; width: 100vw; }
-        .game-container { position: relative; width: 100%; height: 100%; background-color: #34495e; overflow: hidden; }
-        .game-info { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #fff; font-size: 1.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
-        .ui-panel { position: absolute; top: 10px; right: 10px; z-index: 10; display: flex; flex-direction: column; gap: 10px; }
-        .ammo-display, .health-display { padding: 5px 10px; background-color: rgba(0,0,0,0.5); border-radius: 5px; font-size: 1.2em; text-align: center; }
-        .game-status { position: absolute; bottom: 10px; top: auto; left: 50%; transform: translateX(-50%); text-align: center; display: none; padding: 10px; background-color: rgba(0,0,0,0.7); border-radius: 5px; }
-        #cs2-look-panel { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 99; }
-        #cs2-game-controls { display: none; position: absolute; bottom: 10px; left: 10px; right: 10px; justify-content: space-between; align-items: flex-end; z-index: 100; }
-        .button { width: 60px; height: 60px; border-radius: 50%; background-color: rgba(44, 62, 80, 0.7); color: #fff; border: none; font-size: 1.5em; line-height: 60px; text-align: center; user-select: none; }
-        .joystick-container { position: relative; width: 150px; height: 150px; background-color: rgba(44, 62, 80, 0.5); border-radius: 50%; }
-        .joystick-knob { position: absolute; top: 50%; left: 50%; width: 60px; height: 60px; border-radius: 50%; background-color: rgba(189, 195, 199, 0.9); transform: translate(-50%, -50%); }
-        .cs2-buttons { display: flex; flex-direction: column; gap: 10px; }
-        .reload-button { width: 60px; height: 60px; border-radius: 50%; background-color: rgba(230, 126, 34, 0.7); color: #fff; border: none; font-size: 1.2em; line-height: 60px; text-align: center; user-select: none; }
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+            background-color: #050505;
+            user-select: none;
+            color: white;
+            touch-action: none; /* Mobilde kaydırmayı engelle */
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700;800&display=swap');
+
+        /* --- UI GENEL --- */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .hidden { display: none !important; }
+        
+        /* Butonlar */
+        .btn {
+            background: linear-gradient(90deg, #0066ff, #0033aa);
+            color: white; border: none; padding: 15px 40px;
+            font-size: 22px; font-weight: bold; font-family: inherit;
+            cursor: pointer; clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+            transition: 0.2s; text-transform: uppercase; letter-spacing: 2px;
+            pointer-events: auto; box-shadow: 0 0 15px rgba(0, 100, 255, 0.5);
+        }
+        .btn:hover { background: linear-gradient(90deg, #0088ff, #0055cc); transform: scale(1.05); }
+        .btn-secondary { background: #333; box-shadow: none; font-size: 18px; padding: 10px 30px; }
+
+        /* --- DOKUNMATİK KONTROLLER (Touch Controls) --- */
+        .touch-interface {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: auto; z-index: 5;
+        }
+
+        /* Joystick Alanı */
+        #joystick-zone {
+            position: absolute; bottom: 50px; left: 50px;
+            width: 150px; height: 150px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            touch-action: none;
+        }
+        #joystick-nipple {
+            position: absolute; top: 50%; left: 50%;
+            width: 50px; height: 50px;
+            background: rgba(0, 170, 255, 0.5);
+            border: 2px solid #00aaff;
+            border-radius: 50%;
             transform: translate(-50%, -50%);
-            width: 20px;
-            height: 20px;
             pointer-events: none;
-            z-index: 1000;
+            box-shadow: 0 0 15px #00aaff;
         }
-        #crosshair::before, #crosshair::after {
-            content: '';
+
+        /* Bakış Alanı (Sağ taraf) */
+        #look-zone {
+            position: absolute; top: 0; right: 0;
+            width: 60%; height: 100%;
+            touch-action: none;
+            /* background: rgba(255,0,0,0.1); Debug için açılabilir */ 
+        }
+
+        /* Aksiyon Butonları */
+        .action-btn {
             position: absolute;
-            background-color: white;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 18px;
+            cursor: pointer; touch-action: none;
+            transition: transform 0.1s;
+            backdrop-filter: blur(4px);
         }
-        #crosshair::before {
-            width: 2px;
-            height: 20px;
-            left: 9px;
+        .action-btn:active { transform: scale(0.9); background: rgba(255, 255, 255, 0.2); }
+
+        #btn-fire {
+            bottom: 60px; right: 40px;
+            width: 90px; height: 90px;
+            background: rgba(255, 50, 50, 0.3);
+            border-color: rgba(255, 50, 50, 0.6);
+            font-size: 24px;
         }
-        #crosshair::after {
-            width: 20px;
-            height: 2px;
-            top: 9px;
+        #btn-fire:active { background: rgba(255, 50, 50, 0.6); box-shadow: 0 0 20px red; }
+
+        #btn-reload { bottom: 170px; right: 50px; width: 60px; height: 60px; }
+        #btn-jump { bottom: 60px; right: 150px; width: 70px; height: 70px; }
+        #btn-scope { bottom: 160px; right: 140px; width: 60px; height: 60px; }
+        #btn-switch { top: 120px; right: 20px; width: 70px; height: 70px; border-radius: 10px; font-size: 14px; text-align: center; }
+
+        /* --- LOBİ EKRANI --- */
+        #lobby-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at 50% 50%, #1a202c 0%, #000000 100%);
+            display: flex; flex-direction: row;
+            z-index: 20; pointer-events: auto;
         }
+        #lobby-left {
+            width: 45%; height: 100%; padding: 40px; box-sizing: border-box;
+            display: flex; flex-direction: column; justify-content: center;
+            background: linear-gradient(90deg, rgba(0,0,0,0.9) 0%, transparent 100%);
+        }
+        #lobby-right { flex: 1; position: relative; }
+        
+        .game-title {
+            font-size: 60px; font-weight: 900; line-height: 1; margin-bottom: 10px;
+            background: linear-gradient(to right, #fff, #00aaff); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .game-subtitle { font-size: 20px; color: #8899aa; letter-spacing: 5px; margin-bottom: 40px; }
+        .lobby-stats { margin-bottom: 30px; font-size: 18px; color: #ffd700; display: flex; align-items: center; gap: 15px; }
+        .lobby-menu { display: flex; flex-direction: column; gap: 15px; align-items: flex-start; }
+
+        /* --- MARKET --- */
+        #market-overlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 85%; height: 85%; background: rgba(10, 15, 20, 0.98);
+            border: 1px solid #333; border-radius: 10px; padding: 20px;
+            display: none; flex-direction: column; z-index: 30;
+        }
+        .market-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; overflow-y: auto; flex: 1; }
+        .market-item {
+            background: rgba(255,255,255,0.05); border: 1px solid #333; padding: 15px;
+            border-radius: 5px; text-align: center; cursor: pointer; transition: 0.2s;
+        }
+        .market-item:hover { border-color: #00aaff; background: rgba(0, 170, 255, 0.1); }
+        .market-item.owned { border-color: #00ff88; }
+        
+        /* --- HUD --- */
+        #score-panel {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; align-items: center; pointer-events: none;
+            background: rgba(10, 15, 20, 0.8); border: 1px solid rgba(255,255,255,0.1);
+            padding: 5px 30px; border-radius: 30px; backdrop-filter: blur(5px);
+        }
+        .score-box { font-size: 28px; font-weight: bold; padding: 0 15px; }
+        .score-blue { color: #4da6ff; border-right: 1px solid #555; }
+        .score-red { color: #ff4d4d; border-left: 1px solid #555; }
+        .score-target { font-size: 12px; color: #888; padding: 0 15px; text-align: center; }
+
+        #weapon-hud { position: absolute; top: 20px; right: 20px; text-align: right; pointer-events: none; }
+        .weapon-name { font-size: 24px; font-weight: 900; color: white; font-style: italic; }
+        .ammo-text { font-size: 32px; font-weight: bold; color: #00aaff; }
+        
+        #player-status { position: absolute; top: 20px; left: 20px; pointer-events: none; }
+        .hp-bar-bg { width: 200px; height: 10px; background: #333; margin-top: 5px; border-radius: 5px; overflow: hidden; }
+        .hp-bar-fill { width: 100%; height: 100%; background: #00ff88; transition: width 0.2s; }
+
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 24px; height: 24px; pointer-events: none;
+        }
+        .ch-line { position: absolute; background: rgba(0,255,0,0.8); }
+        .ch-h { width: 100%; height: 2px; top: 11px; }
+        .ch-v { height: 100%; width: 2px; left: 11px; }
+        
+        #hit-marker {
+            position: absolute; top: 50%; left: 50%; width: 30px; height: 30px;
+            border: 2px solid red; transform: translate(-50%, -50%) rotate(45deg);
+            opacity: 0; transition: opacity 0.1s; pointer-events: none;
+        }
+
+        #notification-area { position: absolute; top: 100px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 5px; align-items: center; pointer-events: none; }
+        .notif { background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 4px; border-bottom: 2px solid white; animation: fade 3s forwards; font-size: 14px; }
+        @keyframes fade { 0% { opacity:1; transform: translateY(10px); } 100% { opacity:0; transform: translateY(0); } }
+
+        /* Oyun Sonu */
+        #game-over-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 50; display: none;
+            flex-direction: column; justify-content: center; align-items: center;
+            pointer-events: auto;
+        }
+
     </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
 </head>
 <body>
-    <div id="eyvallah-strike-container" class="game-container">
-        <div id="crosshair"></div>
-        <div class="ui-panel">
-            <div class="health-display">Can: <span id="player-health">100</span></div>
-            <div class="ammo-display"><span id="current-ammo">30</span> / <span id="max-ammo">30</span></div>
+
+    <!-- LOBİ EKRANI -->
+    <div id="lobby-screen">
+        <div id="lobby-left">
+            <div class="game-title">NYXLABS<br>WAR</div>
+            <div class="game-subtitle">TOUCH ELITE</div>
+            
+            <div class="lobby-stats">
+                <span>💰 BAKİYE: <span id="lobby-money">0</span> NC</span>
+            </div>
+
+            <div class="lobby-menu">
+                <button class="btn" onclick="startGame()">OPERASYONA BAŞLA</button>
+                <button class="btn btn-secondary" onclick="toggleMarket(true)">SİLAH MARKETİ</button>
+            </div>
+            
+            <div style="margin-top: 40px; color: #666; font-size: 12px; line-height: 1.5;">
+                <strong style="color:#00aaff">KONTROLLER:</strong><br>
+                SOL ALT: Hareket (Joystick)<br>
+                SAĞ EKRAN: Nişan (Sürükle)<br>
+                SAĞ ALT: Ateş & Aksiyonlar
+            </div>
         </div>
-        <div class="game-status" id="game-status"></div>
-        <div id="cs2-look-panel"></div>
-        <div id="cs2-game-controls">
-            <div id="cs2-joystick-container" class="joystick-container">
-                <div id="cs2-joystick-knob" class="joystick-knob"></div>
+        <div id="lobby-right"></div>
+    </div>
+
+    <!-- MARKET -->
+    <div id="market-overlay">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h2 style="margin:0;">SİLAH MARKETİ</h2>
+            <button class="btn btn-secondary" style="padding: 5px 20px;" onclick="toggleMarket(false)">KAPAT</button>
+        </div>
+        <div class="market-grid" id="market-grid"></div>
+    </div>
+
+    <!-- OYUN SONU -->
+    <div id="game-over-screen">
+        <h1 id="end-title" style="font-size: 60px; margin-bottom: 20px;">OYUN BİTTİ</h1>
+        <div style="font-size: 24px; color: #ffd700; margin-bottom: 40px;">KAZANILAN: <span id="end-reward">0</span> NC</div>
+        <button class="btn" onclick="location.reload()">LOBİYE DÖN</button>
+    </div>
+
+    <!-- OYUN HUD & DOKUNMATİK KONTROLLER -->
+    <div id="ui-layer">
+        <div id="score-panel">
+            <span class="score-box score-blue" id="score-blue">0</span>
+            <div class="score-target">HEDEF<br>100</div>
+            <span class="score-box score-red" id="score-red">0</span>
+        </div>
+
+        <div id="player-status">
+            <div style="font-weight: bold; font-size: 20px;">OPERATOR</div>
+            <div class="hp-bar-bg"><div class="hp-bar-fill" id="hud-hp"></div></div>
+        </div>
+
+        <div id="weapon-hud">
+            <div class="weapon-name" id="hud-wep-name">RIFLE</div>
+            <div class="ammo-text"><span id="hud-ammo">30</span></div>
+        </div>
+
+        <div id="crosshair">
+            <div class="ch-line ch-h"></div>
+            <div class="ch-line ch-v"></div>
+        </div>
+        <div id="hit-marker"></div>
+        <div id="notification-area"></div>
+
+        <!-- DOKUNMATİK ARAYÜZ (Touch Interface) -->
+        <div class="touch-interface" id="touch-controls">
+            <!-- Joystick -->
+            <div id="joystick-zone">
+                <div id="joystick-nipple"></div>
             </div>
-            <div class="cs2-buttons">
-                <button id="jump-button" class="button">Zıpla</button>
-                <button id="fire-button" class="button">Ateş Et</button>
-                <button id="reload-button" class="reload-button">Şarjör</button>
-            </div>
+
+            <!-- Bakış Alanı (Görünmez, sağ yarıyı kaplar) -->
+            <div id="look-zone"></div>
+
+            <!-- Butonlar -->
+            <div class="action-btn" id="btn-switch">SİLAH</div>
+            <div class="action-btn" id="btn-scope">ZOOM</div>
+            <div class="action-btn" id="btn-reload">R</div>
+            <div class="action-btn" id="btn-jump">ZIPLA</div>
+            <div class="action-btn" id="btn-fire">ATEŞ</div>
         </div>
     </div>
-    <footer>
-        <div class="container">
-            <p>&copy; 2025 Eyüp Ensar Erkul. Tüm Hakları Saklıdır.</p>
-        </div>
-    </footer>
 
     <script type="module">
-        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.126.0/build/three.module.js';
+        import * as THREE from 'three';
 
-        const gameContainer = document.getElementById('eyvallah-strike-container');
-        const gameStatusElement = document.getElementById('game-status');
-        const playerHealthElement = document.getElementById('player-health');
-        const currentAmmoElement = document.getElementById('current-ammo');
-        const maxAmmoElement = document.getElementById('max-ammo');
+        // --- AYARLAR ---
+        const CONFIG = {
+            WIN_SCORE: 100,
+            PLAYER_SPEED: 18,
+            SENSITIVITY_X: 0.004,
+            SENSITIVITY_Y: 0.004,
+            GRAVITY: 300,
+            JUMP_HEIGHT: 120,
+            BOT_COUNT: 10
+        };
+
+        const WEAPONS = [
+            { id: 'm4', name: 'M4A1', type: 'primary', price: 0, dmg: 22, rate: 0.1, mag: 30, color: 0x333333 },
+            { id: 'ak47', name: 'AK-47', type: 'primary', price: 500, dmg: 28, rate: 0.12, mag: 30, color: 0x553311 },
+            { id: 'awp', name: 'AWP', type: 'primary', price: 1500, dmg: 105, rate: 1.5, mag: 5, color: 0x224422 },
+            { id: 'glock', name: 'GLOCK', type: 'secondary', price: 0, dmg: 15, rate: 0.2, mag: 15, color: 0x111111 }
+        ];
+
+        // --- DEĞİŞKENLER ---
+        let gameState = 'LOBBY';
+        let userData = { money: 0, inventory: ['m4', 'glock'], loadout: { primary: 'm4', secondary: 'glock' } };
         
-        const cs2Controls = document.getElementById('cs2-game-controls');
-        const moveJoystickContainer = document.getElementById('cs2-joystick-container');
-        const fireButton = document.getElementById('fire-button');
-        const jumpButton = document.getElementById('jump-button');
-        const reloadButton = document.getElementById('reload-button');
-        const lookPanel = document.getElementById('cs2-look-panel');
-        const crosshair = document.getElementById('crosshair');
-
         let scene, camera, renderer;
-        let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
-        let turnLeft = false, turnRight = false;
-        let velocity = new THREE.Vector3();
-        let direction = new THREE.Vector3();
-        let canJump = false;
-        let enemies = [];
-        let teammates = [];
-        let playerBullets = [];
-        let enemyBullets = [];
-        let teammateBullets = [];
+        let clock = new THREE.Clock();
+        let raycaster = new THREE.Raycaster();
+        
+        // Input States (Dokunmatik & Mouse)
+        let input = {
+            move: { x: 0, y: 0 }, // Joystick -1 to 1
+            look: { x: 0, y: 0 }, // Look delta
+            fire: false,
+            scope: false
+        };
 
-        const playerHeight = 1.8;
-        const playerSpeed = 0.2; // Hız tekrar arttırıldı
-        const turnSpeed = 0.03;
-        let playerHealth = 100;
-        let currentAmmo = 30;
-        const maxAmmo = 30;
-        const reloadTime = 2000;
-        let isReloading = false;
-        const maxEnemies = 5;
-        const maxTeammates = 5;
-        const mapSize = 150; // Harita boyutu küçültüldü
-        const respawnTime = 3000;
+        let player = { hp: 100, ammo: 30, curWepIdx: 0, weapons: [], velocity: new THREE.Vector3(), canJump: false };
+        let bots = [];
+        let projectiles = [];
+        let worldObjects = [];
+        let weaponModel = null;
+        let scores = { blue: 0, red: 0 };
 
-        const teammateSpawnPoints = [
-            new THREE.Vector3(60, 0.9, 60), // Spawn noktaları yaklaştırıldı
-            new THREE.Vector3(60, 0.9, 40),
-            new THREE.Vector3(40, 0.9, 60),
-            new THREE.Vector3(40, 0.9, 40),
-            new THREE.Vector3(50, 0.9, 50),
-            new THREE.Vector3(70, 0.9, 70)
-        ];
-        const enemySpawnPoints = [
-            new THREE.Vector3(-60, 0.9, -60), // Spawn noktaları yaklaştırıldı
-            new THREE.Vector3(-60, 0.9, -40),
-            new THREE.Vector3(-40, 0.9, -60),
-            new THREE.Vector3(-40, 0.9, -40),
-            new THREE.Vector3(-50, 0.9, -50),
-            new THREE.Vector3(-70, 0.9, -70)
-        ];
+        // Joystick Logic Variables
+        let joyData = { active: false, startX: 0, startY: 0, curX: 0, curY: 0, radius: 75 };
 
-        let moveJoystickActive = false;
-        let moveJoystickCenter = { x: 0, y: 0 };
-        let moveJoystickPos = { x: 0, y: 0 };
-        const moveJoystickRadius = 75;
+        // --- BAŞLANGIÇ ---
+        init();
+        animate();
 
-        let lookTouchIdentifier = null;
-        let prevTouchX = 0;
-        let prevTouchY = 0;
-        const lookSensitivity = 0.005;
-
-        function initGame() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb);
-            scene.fog = new THREE.Fog(0x87ceeb, 0, 750);
-
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.y = playerHeight;
-            camera.position.copy(teammateSpawnPoints[0]);
-
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(10, 20, 10);
-            scene.add(directionalLight);
+        function init() {
+            loadData();
+            setupThreeJS();
+            setupLobby();
+            setupTouchControls();
             
-            const textureLoader = new THREE.TextureLoader();
-            const groundTexture = textureLoader.load('https://threejsfundamentals.org/threejs/resources/images/checker.png');
-            groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
-            groundTexture.repeat.set(mapSize / 10, mapSize / 10);
-            const groundMaterial = new THREE.MeshLambertMaterial({ map: groundTexture, color: 0x808080 });
-            const groundGeometry = new THREE.PlaneGeometry(mapSize, mapSize);
-            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-            ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -0.1;
-            scene.add(ground);
+            // Market UI
+            renderMarket();
+            document.getElementById('lobby-money').innerText = userData.money;
+        }
 
+        function loadData() {
+            const saved = localStorage.getItem('nyx_war_save_touch');
+            if(saved) userData = JSON.parse(saved);
+        }
+        function saveData() {
+            localStorage.setItem('nyx_war_save_touch', JSON.stringify(userData));
+            document.getElementById('lobby-money').innerText = userData.money;
+            renderMarket();
+        }
+
+        function setupThreeJS() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a1015);
+            scene.fog = new THREE.FogExp2(0x0a1015, 0.0015);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+            
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            gameContainer.appendChild(renderer.domElement);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            // Işıklar
+            const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+            scene.add(hemi);
+            const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+            dir.position.set(50, 200, 50);
+            dir.castShadow = true;
+            dir.shadow.mapSize.set(2048, 2048);
+            scene.add(dir);
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function setupLobby() {
+            camera.position.set(0, 1.8, 4);
+            camera.rotation.set(0,0,0);
             
-            playerHealthElement.innerText = playerHealth;
-            currentAmmoElement.innerText = currentAmmo;
-            maxAmmoElement.innerText = maxAmmo;
-
-            createCS2Map();
-            spawnInitialBots();
-
-            document.addEventListener('keydown', onKeyDown, false);
-            document.addEventListener('keyup', onKeyUp, false);
-            window.addEventListener('resize', onResize);
-            document.addEventListener('pointerlockchange', onPointerlockChange, false);
-            gameContainer.addEventListener('mousedown', onMouseDown, false);
+            // Lobi Avatarı
+            const avatar = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 1.8), new THREE.MeshStandardMaterial({ color: 0x0088ff }));
+            body.position.y = 0.9;
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), new THREE.MeshStandardMaterial({ color: 0x333 }));
+            head.position.set(0, 1.6, 0.3);
             
-            if (isMobileDevice()) {
-                cs2Controls.style.display = 'flex';
-                lookPanel.addEventListener('touchstart', onLookStart, false);
-                lookPanel.addEventListener('touchmove', onLookMove, false);
-                lookPanel.addEventListener('touchend', onLookEnd, false);
-                fireButton.addEventListener('touchstart', (e) => { e.preventDefault(); onFire(); });
-                jumpButton.addEventListener('touchstart', () => { if(canJump) velocity.y = 10; canJump = false; });
-                reloadButton.addEventListener('touchstart', onReload);
-                crosshair.style.display = 'none';
-            } else {
-                cs2Controls.style.display = 'none';
-                lookPanel.style.display = 'none';
-                crosshair.style.display = 'block';
-            }
-
-            moveJoystickContainer.addEventListener('touchstart', onMoveJoystickStart, false);
-            moveJoystickContainer.addEventListener('touchmove', onMoveJoystickMove, false);
-            moveJoystickContainer.addEventListener('touchend', onMoveJoystickEnd, false);
-
-            document.addEventListener('DOMContentLoaded', () => {
-                enterFullscreenAndPointerLock();
-            });
-
-            animate();
-        }
-        
-        function enterFullscreenAndPointerLock() {
-            if (isMobileDevice()) {
-                if (!document.fullscreenElement) {
-                    gameContainer.requestFullscreen().catch(err => {
-                        console.log(`Tam ekran moduna geçilemedi: ${err.message}`);
-                    });
-                    screen.orientation.lock('landscape').catch(err => {
-                        console.log(`Yatay moda geçilemedi: ${err.message}`);
-                    });
-                }
-            } else {
-                gameContainer.requestPointerLock();
-            }
+            // Silah
+            const gun = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.2, 0.8), new THREE.MeshStandardMaterial({ color: 0x222 }));
+            gun.position.set(0.3, 1.3, 0.5);
+            
+            avatar.add(body, head, gun);
+            avatar.userData.isLobby = true;
+            scene.add(avatar);
         }
 
-        function isMobileDevice() {
-            return (typeof window.orientation !== "undefined") || (navigator.userAgent.indexOf('IEMobile') !== -1);
-        }
+        // --- OYUN BAŞLATMA ---
+        window.startGame = function() {
+            document.getElementById('lobby-screen').style.display = 'none';
+            document.getElementById('ui-layer').style.display = 'block';
+            
+            // Lobi objelerini temizle
+            scene.children.forEach(c => { if(c.userData.isLobby) c.visible = false; });
 
-        function onPointerlockChange() {
-            if (document.pointerLockElement === gameContainer) {
-                document.addEventListener('mousemove', onMouseMove, false);
-                gameStatusElement.style.display = 'none';
-                crosshair.style.display = 'block';
-            } else {
-                document.removeEventListener('mousemove', onMouseMove, false);
-                showStatusMessage("Oyun Duraklatıldı. Devam etmek için tıklayın.", 'info');
-                crosshair.style.display = 'none';
-            }
-        }
-
-        function onResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-        
-        function createCS2Map() {
-            const textureLoader = new THREE.TextureLoader();
-            const wallTexture = textureLoader.load('https://threejsfundamentals.org/threejs/resources/images/concrete.jpg');
-            wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
-            wallTexture.repeat.set(5, 5);
-            const wallMaterial = new THREE.MeshLambertMaterial({ map: wallTexture, color: 0xcccccc });
-
-            const boxTexture = textureLoader.load('https://threejsfundamentals.org/threejs/resources/images/box.jpg');
-            boxTexture.wrapS = boxTexture.wrapT = THREE.RepeatWrapping;
-            boxTexture.repeat.set(2, 2);
-            const boxMaterial = new THREE.MeshLambertMaterial({ map: boxTexture, color: 0x95a5a6 });
-
-            const walls = [
-                new THREE.Mesh(new THREE.BoxGeometry(mapSize, 10, 1), wallMaterial),
-                new THREE.Mesh(new THREE.BoxGeometry(mapSize, 10, 1), wallMaterial),
-                new THREE.Mesh(new THREE.BoxGeometry(1, 10, mapSize), wallMaterial),
-                new THREE.Mesh(new THREE.BoxGeometry(1, 10, mapSize), wallMaterial)
+            createGameWorld();
+            
+            player.hp = 100;
+            player.curWepIdx = 0;
+            player.weapons = [
+                WEAPONS.find(w => w.id === userData.loadout.primary),
+                WEAPONS.find(w => w.id === userData.loadout.secondary)
             ];
-            walls[0].position.set(0, 5, -mapSize/2);
-            walls[1].position.set(0, 5, mapSize/2);
-            walls[2].position.set(-mapSize/2, 5, 0);
-            walls[3].position.set(mapSize/2, 5, 0);
-
-            walls.forEach(wall => scene.add(wall));
-
-            const boxes = [
-                new THREE.Mesh(new THREE.BoxGeometry(5, 2, 5), boxMaterial),
-                new THREE.Mesh(new THREE.BoxGeometry(10, 3, 2), boxMaterial),
-                new THREE.Mesh(new THREE.BoxGeometry(3, 3, 10), boxMaterial),
-                new THREE.Mesh(new THREE.BoxGeometry(20, 5, 5), boxMaterial),
-                new THREE.Mesh(new THREE.BoxGeometry(5, 5, 20), boxMaterial),
-                new THREE.Mesh(new THREE.BoxGeometry(10, 4, 10), boxMaterial),
-                new THREE.Mesh(new THREE.BoxGeometry(8, 3, 8), boxMaterial),
-                new THREE.Mesh(new THREE.BoxGeometry(6, 6, 6), boxMaterial)
-            ];
-            boxes[0].position.set(10, 1, -5);
-            boxes[1].position.set(-20, 1.5, 15);
-            boxes[2].position.set(-15, 1.5, -20);
-            boxes[3].position.set(20, 2.5, 20);
-            boxes[4].position.set(-15, 2.5, -15);
-            boxes[5].position.set(30, 2, 30);
-            boxes[6].position.set(-30, 1.5, -30);
-            boxes[7].position.set(0, 3, 0);
-
-            boxes.forEach(box => scene.add(box));
-        }
-        
-        function createBot(type = 'enemy') {
-            const bodyGeometry = new THREE.BoxGeometry(1, 1.8, 1);
-            const headGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+            equipWeapon(0);
             
-            let bodyMaterial, headMaterial;
-            if (type === 'enemy') {
-                bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x3498db });
-                headMaterial = new THREE.MeshLambertMaterial({ color: 0xe74c3c });
-            } else {
-                bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x2ecc71 });
-                headMaterial = new THREE.MeshLambertMaterial({ color: 0xf1c40f });
-            }
-
-            const bot = new THREE.Group();
-            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-            const head = new THREE.Mesh(headGeometry, headMaterial);
-            head.position.y = 1.4;
-            bot.add(body);
-            bot.add(head);
-
-            bot.health = 100;
-            bot.type = type;
-            bot.lastFireTime = Date.now();
-            bot.fireRate = Math.random() * 2000 + 1000;
-            bot.movementSpeed = Math.random() * 0.03 + 0.01;
-            bot.targetPosition = new THREE.Vector3();
-            bot.newTargetTime = Date.now();
-            bot.state = 'patrol';
+            // Spawn
+            camera.position.set(0, 20, 0);
+            camera.rotation.set(0,0,0); // Reset rot
             
-            return bot;
-        }
+            gameState = 'GAME';
+            
+            // Botlar
+            bots = [];
+            for(let i=0; i<CONFIG.BOT_COUNT; i++) spawnBot(i%2===0 ? 'blue' : 'red');
+        };
 
-        function spawnInitialBots() {
-            for (let i = 0; i < maxEnemies; i++) {
-                spawnBot('enemy');
+        function createGameWorld() {
+            worldObjects = [];
+            // Zemin
+            const geo = new THREE.PlaneGeometry(500, 500, 32, 32);
+            geo.rotateX(-Math.PI / 2);
+            const pos = geo.attributes.position;
+            for(let i=0; i<pos.count; i++){
+                const x = pos.getX(i); const z = pos.getZ(i);
+                pos.setY(i, Math.sin(x*0.05)*Math.cos(z*0.05)*5); // Engebe
             }
-            for (let i = 0; i < maxTeammates; i++) {
-                spawnBot('teammate');
-            }
-        }
-        
-        function spawnBot(type = 'enemy') {
-            const bot = createBot(type);
-            const spawnPoints = type === 'enemy' ? enemySpawnPoints : teammateSpawnPoints;
-            const spawnPoint = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
-            bot.position.copy(spawnPoint);
-            scene.add(bot);
-            if (type === 'enemy') {
-                enemies.push(bot);
-            } else {
-                teammates.push(bot);
-            }
-        }
-        
-        function onKeyDown(event) {
-            switch (event.code) {
-                case 'KeyW': moveForward = true; break;
-                case 'KeyS': moveBackward = true; break;
-                case 'KeyA': moveLeft = true; break;
-                case 'KeyD': moveRight = true; break;
-                case 'KeyQ': turnLeft = true; break;
-                case 'KeyE': turnRight = true; break;
-                case 'KeyL': onFire(); break;
-                case 'Space':
-                    if (canJump) velocity.y = 10;
-                    canJump = false;
-                    break;
-                case 'KeyR':
-                    onReload();
-                    break;
+            geo.computeVertexNormals();
+            const terrain = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 }));
+            terrain.receiveShadow = true;
+            scene.add(terrain);
+            worldObjects.push(terrain);
+
+            // Kutular
+            const boxGeo = new THREE.BoxGeometry(1,1,1);
+            const boxMat = new THREE.MeshStandardMaterial({ color: 0x444 });
+            for(let i=0; i<40; i++){
+                const box = new THREE.Mesh(boxGeo, boxMat);
+                const s = 3 + Math.random()*5;
+                box.scale.set(s,s,s);
+                box.position.set((Math.random()-0.5)*400, s/2, (Math.random()-0.5)*400);
+                box.castShadow = true; box.receiveShadow = true;
+                scene.add(box);
+                worldObjects.push(box);
             }
         }
 
-        function onKeyUp(event) {
-            switch (event.code) {
-                case 'KeyW': moveForward = false; break;
-                case 'KeyS': moveBackward = false; break;
-                case 'KeyA': moveLeft = false; break;
-                case 'KeyD': moveRight = false; break;
-                case 'KeyQ': turnLeft = false; break;
-                case 'KeyE': turnRight = false; break;
-            }
-        }
-        
-        function onMouseMove(event) {
-            if (document.pointerLockElement === gameContainer) {
-                const movementX = event.movementX || 0;
-                const movementY = event.movementY || 0;
+        // --- TOUCH KONTROLLERİ (JOYSTICK & LOOK & BUTTONS) ---
+        function setupTouchControls() {
+            const joyZone = document.getElementById('joystick-zone');
+            const joyNipple = document.getElementById('joystick-nipple');
+            const lookZone = document.getElementById('look-zone');
 
-                camera.rotation.y -= movementX * lookSensitivity;
-                const newRotationX = camera.rotation.x - movementY * lookSensitivity;
-                camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, newRotationX));
-            }
-        }
+            // --- JOYSTICK ---
+            const handleJoyStart = (clientX, clientY) => {
+                const rect = joyZone.getBoundingClientRect();
+                const centerX = rect.left + rect.width/2;
+                const centerY = rect.top + rect.height/2;
+                joyData.active = true;
+                joyData.startX = centerX;
+                joyData.startY = centerY;
+                updateJoy(clientX, clientY);
+            };
 
-        function onMouseDown(event) {
-            if (document.pointerLockElement === gameContainer) {
-                if (event.button === 0) {
-                    onFire();
+            const updateJoy = (clientX, clientY) => {
+                if(!joyData.active) return;
+                let dx = clientX - joyData.startX;
+                let dy = clientY - joyData.startY;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                
+                if(dist > joyData.radius) {
+                    const ratio = joyData.radius / dist;
+                    dx *= ratio; dy *= ratio;
                 }
-            }
+                
+                joyNipple.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+                
+                // Input'a aktar (-1 to 1)
+                input.move.x = dx / joyData.radius;
+                input.move.y = dy / joyData.radius;
+            };
+
+            const resetJoy = () => {
+                joyData.active = false;
+                joyNipple.style.transform = `translate(-50%, -50%)`;
+                input.move.x = 0; input.move.y = 0;
+            };
+
+            // Touch Events (Joystick)
+            joyZone.addEventListener('touchstart', e => handleJoyStart(e.touches[0].clientX, e.touches[0].clientY));
+            joyZone.addEventListener('touchmove', e => updateJoy(e.touches[0].clientX, e.touches[0].clientY));
+            joyZone.addEventListener('touchend', resetJoy);
+            
+            // Mouse Events (Joystick - PC için)
+            joyZone.addEventListener('mousedown', e => handleJoyStart(e.clientX, e.clientY));
+            window.addEventListener('mousemove', e => { if(joyData.active) updateJoy(e.clientX, e.clientY); });
+            window.addEventListener('mouseup', resetJoy);
+
+            // --- LOOK (KAMERA) ---
+            let lastLookX = 0, lastLookY = 0;
+            
+            const handleLookStart = (x, y) => { lastLookX = x; lastLookY = y; };
+            const handleLookMove = (x, y) => {
+                const dx = x - lastLookX;
+                const dy = y - lastLookY;
+                
+                // Rotasyon Uygula (YXZ sırası önemli)
+                // Yaw (Y ekseni etrafında dönme - Sağa/Sola)
+                camera.rotation.y -= dx * CONFIG.SENSITIVITY_X;
+                
+                // Pitch (X ekseni etrafında dönme - Yukarı/Aşağı) - Clamp ile sınırla
+                const newX = camera.rotation.x - dy * CONFIG.SENSITIVITY_Y;
+                camera.rotation.x = Math.max(-1.5, Math.min(1.5, newX)); // ~90 derece sınır
+
+                lastLookX = x; lastLookY = y;
+            };
+
+            lookZone.addEventListener('touchstart', e => handleLookStart(e.touches[0].clientX, e.touches[0].clientY));
+            lookZone.addEventListener('touchmove', e => { e.preventDefault(); handleLookMove(e.touches[0].clientX, e.touches[0].clientY); });
+            
+            // Mouse Look (PC için sürükle-bak)
+            let isLooking = false;
+            lookZone.addEventListener('mousedown', e => { isLooking = true; handleLookStart(e.clientX, e.clientY); });
+            window.addEventListener('mousemove', e => { if(isLooking) handleLookMove(e.clientX, e.clientY); });
+            window.addEventListener('mouseup', () => isLooking = false);
+
+            // --- BUTONLAR ---
+            const btnFire = document.getElementById('btn-fire');
+            const startFire = (e) => { e.preventDefault(); input.fire = true; };
+            const endFire = (e) => { e.preventDefault(); input.fire = false; };
+            btnFire.addEventListener('touchstart', startFire); btnFire.addEventListener('touchend', endFire);
+            btnFire.addEventListener('mousedown', startFire); btnFire.addEventListener('mouseup', endFire);
+
+            document.getElementById('btn-jump').onmousedown = () => { if(player.canJump) { player.velocity.y = CONFIG.JUMP_HEIGHT; player.canJump = false; } };
+            document.getElementById('btn-jump').ontouchstart = (e) => { e.preventDefault(); if(player.canJump) { player.velocity.y = CONFIG.JUMP_HEIGHT; player.canJump = false; } };
+
+            document.getElementById('btn-reload').onclick = reload;
+            document.getElementById('btn-scope').onclick = toggleScope;
+            document.getElementById('btn-switch').onclick = () => equipWeapon(player.curWepIdx === 0 ? 1 : 0);
         }
-        
-        function onFire() {
-            if (isReloading || currentAmmo <= 0) {
+
+        // --- OYUN MANTIĞI ---
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1);
+
+            if (gameState === 'LOBBY') {
+                // Lobi avatarını döndür
+                scene.children.forEach(c => { if(c.userData.isLobby) c.rotation.y += delta * 0.5; });
+                renderer.render(scene, camera);
                 return;
             }
 
-            const bulletGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-            const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffa500 });
-            const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
-            bullet.type = 'player';
+            if (gameState === 'GAME') {
+                // 1. Oyuncu Hareketi (Joystick'ten gelen input.move.x/y)
+                // Kameranın yönüne göre hareket vektörünü hesapla
+                const camDir = new THREE.Vector3();
+                camera.getWorldDirection(camDir);
+                const forward = new THREE.Vector3(camDir.x, 0, camDir.z).normalize();
+                const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0,1,0), forward).normalize(); // Sol aslında ama tersleyebiliriz
 
-            bullet.position.copy(camera.position);
-            const direction = new THREE.Vector3();
-            camera.getWorldDirection(direction);
+                // Input: y ileri (-), x sağ (+)
+                // Joystick yukarı (-y) -> İleri gitmeli
+                const moveVec = new THREE.Vector3();
+                if (Math.abs(input.move.y) > 0.1) moveVec.add(forward.multiplyScalar(-input.move.y));
+                if (Math.abs(input.move.x) > 0.1) moveVec.add(right.multiplyScalar(-input.move.x)); // Sağ/Sol düzeltmesi
 
-            bullet.velocity = direction.multiplyScalar(50);
-            scene.add(bullet);
-            playerBullets.push(bullet);
-
-            currentAmmo--;
-            currentAmmoElement.innerText = currentAmmo;
-        }
-
-        function onReload() {
-            if (isReloading || currentAmmo === maxAmmo) return;
-            
-            isReloading = true;
-            showStatusMessage("Şarjör dolduruluyor...", 'info');
-            setTimeout(() => {
-                currentAmmo = maxAmmo;
-                currentAmmoElement.innerText = currentAmmo;
-                isReloading = false;
-                hideStatusMessage();
-            }, reloadTime);
-        }
-        
-        function onMoveJoystickStart(e) {
-            e.preventDefault();
-            const touch = e.changedTouches[0];
-            const rect = moveJoystickContainer.getBoundingClientRect();
-            moveJoystickActive = touch.clientX >= rect.left && touch.clientX <= rect.right && touch.clientY >= rect.top && touch.clientY <= rect.bottom;
-
-            if (moveJoystickActive) {
-                moveJoystickCenter = {
-                    x: rect.left + rect.width / 2,
-                    y: rect.top + rect.height / 2
-                };
-                onMoveJoystickMove(e);
-            }
-        }
-
-        function onMoveJoystickMove(e) {
-            if (!moveJoystickActive) return;
-            e.preventDefault();
-            const touch = Array.from(e.changedTouches).find(t => {
-                const rect = moveJoystickContainer.getBoundingClientRect();
-                return t.clientX >= rect.left && t.clientX <= rect.right && t.clientY >= rect.top && t.clientY <= rect.bottom;
-            });
-            if (!touch) return;
-
-            let dx = touch.clientX - moveJoystickCenter.x;
-            let dy = touch.clientY - moveJoystickCenter.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            if (distance > moveJoystickRadius) {
-                const angle = Math.atan2(dy, dx);
-                dx = Math.cos(angle) * moveJoystickRadius;
-                dy = Math.sin(angle) * moveJoystickRadius;
-            }
-
-            document.getElementById('cs2-joystick-knob').style.transform = `translate(-50%, -50%) translate(${dx}px, ${dy}px)`;
-
-            moveJoystickPos = { x: dx / moveJoystickRadius, y: -dy / moveJoystickRadius };
-        }
-
-        function onMoveJoystickEnd(e) {
-            if (!moveJoystickActive) return;
-            moveJoystickActive = false;
-            document.getElementById('cs2-joystick-knob').style.transform = 'translate(-50%, -50%)';
-            moveJoystickPos = { x: 0, y: 0 };
-        }
-        
-        function onLookStart(e) {
-            e.preventDefault();
-            const touch = e.changedTouches[0];
-            lookTouchIdentifier = touch.identifier;
-            prevTouchX = touch.clientX;
-            prevTouchY = touch.clientY;
-        }
-
-        function onLookMove(e) {
-            if (lookTouchIdentifier === null) return;
-            e.preventDefault();
-            const touch = Array.from(e.changedTouches).find(t => t.identifier === lookTouchIdentifier);
-            if (!touch) return;
-
-            const dx = touch.clientX - prevTouchX;
-            const dy = touch.clientY - prevTouchY;
-
-            camera.rotation.y -= dx * lookSensitivity;
-            const newRotationX = camera.rotation.x - dy * lookSensitivity;
-            camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, newRotationX));
-
-            prevTouchX = touch.clientX;
-            prevTouchY = touch.clientY;
-        }
-
-        function onLookEnd(e) {
-            if (lookTouchIdentifier === null) return;
-            e.preventDefault();
-            lookTouchIdentifier = null;
-        }
-
-        function showStatusMessage(message, type) {
-            gameStatusElement.innerText = message;
-            gameStatusElement.style.color = type === 'info' ? '#ecf0f1' : '#e74c3c';
-            gameStatusElement.style.display = 'block';
-        }
-
-        function hideStatusMessage() {
-            gameStatusElement.style.display = 'none';
-        }
-        
-        function animate() {
-            requestAnimationFrame(animate);
-
-            const delta = 0.016;
-
-            velocity.y -= 9.8 * 2.0 * delta;
-
-            if (isMobileDevice()) {
-                direction.z = moveJoystickPos.y;
-                direction.x = moveJoystickPos.x;
-            } else {
-                if (turnLeft) {
-                    camera.rotation.y += turnSpeed;
-                }
-                if (turnRight) {
-                    camera.rotation.y -= turnSpeed;
-                }
+                const speed = CONFIG.PLAYER_SPEED;
+                player.velocity.x = moveVec.x * speed;
+                player.velocity.z = moveVec.z * speed;
                 
-                direction.z = Number(moveForward) - Number(moveBackward);
-                direction.x = Number(moveRight) - Number(moveLeft);
+                // Yerçekimi
+                player.velocity.y -= CONFIG.GRAVITY * delta;
+
+                // Uygula
+                camera.position.x += player.velocity.x * delta;
+                camera.position.z += player.velocity.z * delta;
+                camera.position.y += player.velocity.y * delta;
+
+                // Zemin Kontrolü (Basit Arazi)
+                const terrainH = getTerrainY(camera.position.x, camera.position.z);
+                if (camera.position.y < terrainH + 4) {
+                    camera.position.y = terrainH + 4;
+                    player.velocity.y = 0;
+                    player.canJump = true;
+                }
+
+                // Silah Takibi (Kameraya yumuşak bağlanma)
+                if(weaponModel) {
+                    // Silahı kameranın önüne koy ama rotasyonu kameradan al
+                    const gunPos = camera.position.clone();
+                    const gunOffset = new THREE.Vector3(0.5, -0.6, -1.2); // Sağ alt
+                    gunOffset.applyEuler(camera.rotation);
+                    gunPos.add(gunOffset);
+                    
+                    weaponModel.position.lerp(gunPos, 0.5); // Lag efekti
+                    weaponModel.rotation.copy(camera.rotation);
+                    
+                    // Recoil recovery
+                    if(weaponModel.userData.recoil > 0) {
+                        weaponModel.rotateX(weaponModel.userData.recoil);
+                        weaponModel.userData.recoil -= delta * 2;
+                    }
+                }
+
+                // Ateş Kontrolü (Basılı tutma)
+                if (input.fire) attemptShoot(true);
+
+                updateProjectiles(delta);
+                updateBots(delta);
             }
 
-            if (direction.length() > 0) {
-                direction.normalize();
-            }
-
-            const forwardVector = new THREE.Vector3();
-            camera.getWorldDirection(forwardVector);
-            forwardVector.y = 0;
-            forwardVector.normalize();
-
-            const rightVector = new THREE.Vector3();
-            rightVector.crossVectors(camera.up, forwardVector);
-            rightVector.normalize();
-
-            const movement = new THREE.Vector3();
-            movement.add(forwardVector.multiplyScalar(direction.z * playerSpeed * 60 * delta));
-            movement.add(rightVector.multiplyScalar(direction.x * playerSpeed * 60 * delta));
-
-            camera.position.add(movement);
-            camera.position.y += velocity.y * delta;
-
-            if (camera.position.y <= playerHeight) {
-                velocity.y = 0;
-                camera.position.y = playerHeight;
-                canJump = true;
-            }
-            
-            updateEnemyBots();
-            updateTeammates();
-            updateBullets();
-            
             renderer.render(scene, camera);
         }
 
-        function findNearestTarget(bot, targetList) {
-            let nearestTarget = null;
-            let minDistance = Infinity;
-
-            targetList.forEach(target => {
-                const distance = bot.position.distanceTo(target.position);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    nearestTarget = target;
-                }
-            });
-
-            return nearestTarget;
+        function getTerrainY(x, z) {
+            return Math.sin(x*0.05)*Math.cos(z*0.05)*5; // Basit terrain formülü
         }
 
-        function updateEnemyBots() {
-            enemies.forEach(enemy => {
-                const targets = teammates.concat([{ position: camera.position, type: 'player' }]);
-                const target = findNearestTarget(enemy, targets);
-                if (!target) {
-                    enemy.state = 'patrol';
-                    return;
-                }
-                
-                const distanceToTarget = enemy.position.distanceTo(target.position);
-                const attackDistance = 20; // AI mesafeleri ayarlandı
-                const minDistance = 10;
-
-                if (distanceToTarget > attackDistance) {
-                    enemy.state = 'patrol';
-                } else {
-                    enemy.state = 'attack';
-                }
-
-                if (enemy.state === 'patrol') {
-                    if (Date.now() - enemy.newTargetTime > 5000 || enemy.position.distanceTo(enemy.targetPosition) < 1) {
-                        enemy.targetPosition.set(
-                            (Math.random() - 0.5) * mapSize * 0.9,
-                            enemy.position.y,
-                            (Math.random() - 0.5) * mapSize * 0.9
-                        );
-                        enemy.newTargetTime = Date.now();
-                    }
-                    const moveDirection = new THREE.Vector3().subVectors(enemy.targetPosition, enemy.position).normalize();
-                    enemy.position.add(moveDirection.multiplyScalar(enemy.movementSpeed));
-                }
-                
-                if (enemy.state === 'attack') {
-                    enemy.lookAt(new THREE.Vector3(target.position.x, enemy.position.y, target.position.z));
-                    
-                    if(distanceToTarget < minDistance) {
-                        const awayDirection = new THREE.Vector3().subVectors(enemy.position, target.position).normalize();
-                        enemy.position.add(awayDirection.multiplyScalar(enemy.movementSpeed));
-                    }
-                    
-                    if (Date.now() - enemy.lastFireTime > enemy.fireRate) {
-                        fireBotBullet(enemy, target);
-                        enemy.lastFireTime = Date.now();
-                    }
-                }
-            });
-        }
-        
-        function updateTeammates() {
-            teammates.forEach(teammate => {
-                const target = findNearestTarget(teammate, enemies);
-                if (!target) {
-                    teammate.state = 'patrol';
-                    return;
-                }
-
-                const distanceToTarget = teammate.position.distanceTo(target.position);
-                const attackDistance = 20; // AI mesafeleri ayarlandı
-                const minDistance = 10;
-
-                if (distanceToTarget > attackDistance) {
-                    teammate.state = 'patrol';
-                } else {
-                    teammate.state = 'attack';
-                }
-
-                if (teammate.state === 'patrol') {
-                    if (Date.now() - teammate.newTargetTime > 5000 || teammate.position.distanceTo(teammate.targetPosition) < 1) {
-                        teammate.targetPosition.set(
-                            (Math.random() - 0.5) * mapSize * 0.9,
-                            teammate.position.y,
-                            (Math.random() - 0.5) * mapSize * 0.9
-                        );
-                        teammate.newTargetTime = Date.now();
-                    }
-                    const moveDirection = new THREE.Vector3().subVectors(teammate.targetPosition, teammate.position).normalize();
-                    teammate.position.add(moveDirection.multiplyScalar(teammate.movementSpeed));
-                }
-
-                if (teammate.state === 'attack') {
-                    teammate.lookAt(new THREE.Vector3(target.position.x, teammate.position.y, target.position.z));
-
-                    if(distanceToTarget < minDistance) {
-                        const awayDirection = new THREE.Vector3().subVectors(teammate.position, target.position).normalize();
-                        teammate.position.add(awayDirection.multiplyScalar(teammate.movementSpeed));
-                    }
-
-                    if (Date.now() - teammate.lastFireTime > teammate.fireRate) {
-                        fireBotBullet(teammate, target);
-                        teammate.lastFireTime = Date.now();
-                    }
-                }
-            });
-        }
-
-        function fireBotBullet(bot, target) {
-            const bulletGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-            const bulletMaterial = new THREE.MeshBasicMaterial({ color: bot.type === 'enemy' ? 0xe74c3c : 0x27ae60 });
-            const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
-            bullet.type = bot.type;
-
-            bullet.position.copy(bot.position);
-            bullet.position.y = 1.2;
-            const direction = new THREE.Vector3().subVectors(target.position, bot.position).normalize();
-            bullet.velocity = direction.multiplyScalar(20);
-            scene.add(bullet);
+        // --- BOT & SAVAŞ ---
+        function spawnBot(team) {
+            const color = team === 'blue' ? 0x0088ff : 0xff3333;
+            const mesh = new THREE.Group();
             
-            if (bot.type === 'enemy') {
-                enemyBullets.push(bullet);
+            const body = new THREE.Mesh(new THREE.CapsuleGeometry(1, 3), new THREE.MeshStandardMaterial({ color: color }));
+            body.position.y = 1.5;
+            
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.8,0.8,0.8), new THREE.MeshStandardMaterial({ color: 0x222 }));
+            head.position.y = 3.2;
+            head.userData = { isHead: true };
+
+            // HP Bar Mesh
+            const hpGeo = new THREE.PlaneGeometry(1.5, 0.2);
+            const hpMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide });
+            const hpMesh = new THREE.Mesh(hpGeo, hpMat);
+            hpMesh.position.y = 4.2;
+
+            mesh.add(body, head, hpMesh);
+            
+            const x = (Math.random()-0.5)*400;
+            const z = (Math.random()-0.5)*400;
+            mesh.position.set(x, getTerrainY(x,z)+3, z);
+            
+            scene.add(mesh);
+            bots.push({ mesh, hpMesh, team, hp: 100, alive: true, nextShot: 0 });
+        }
+
+        function updateBots(delta) {
+            const pPos = camera.position;
+            bots.forEach(b => {
+                if(!b.alive) return;
+                
+                b.hpMesh.lookAt(pPos);
+                
+                // Basit AI
+                const dist = b.mesh.position.distanceTo(pPos);
+                if(dist > 20) {
+                    b.mesh.lookAt(pPos.x, b.mesh.position.y, pPos.z);
+                    b.mesh.translateZ(10 * delta);
+                }
+                
+                // Yerçekimi/Zemin
+                const ty = getTerrainY(b.mesh.position.x, b.mesh.position.z);
+                b.mesh.position.y = ty;
+
+                // Ateş
+                if(Date.now() > b.nextShot && dist < 100) {
+                    shoot(b, false);
+                    b.nextShot = Date.now() + 1500 + Math.random()*1000;
+                }
+            });
+        }
+
+        function equipWeapon(idx) {
+            player.curWepIdx = idx;
+            const wep = player.weapons[idx];
+            player.ammo = wep.mag;
+            
+            if(weaponModel) scene.remove(weaponModel);
+            
+            // Basit Silah Modeli
+            const g = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({ color: wep.color });
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 1), mat);
+            g.add(body);
+            g.userData = { recoil: 0 };
+            
+            weaponModel = g;
+            scene.add(g); // Sahneye ekliyoruz, animate içinde kamerayı takip ettireceğiz
+            
+            document.getElementById('hud-wep-name').innerText = wep.name;
+            updateHUD();
+        }
+
+        let lastShotTime = 0;
+        function attemptShoot(isPlayer) {
+            const now = Date.now() / 1000;
+            const wep = player.weapons[player.curWepIdx];
+            
+            if(now - lastShotTime < wep.rate) return;
+            if(player.ammo <= 0) { reload(); return; }
+            
+            lastShotTime = now;
+            player.ammo--;
+            updateHUD();
+            
+            shoot(null, true);
+            
+            // Görsel efekt
+            if(weaponModel) weaponModel.userData.recoil = 0.1;
+        }
+
+        function shoot(shooter, isPlayer) {
+            let startPos, dir;
+            
+            if(isPlayer) {
+                // Kamera yönünde
+                startPos = camera.position.clone();
+                // Silahın ucundan çıksın (biraz sağ alt)
+                const offset = new THREE.Vector3(0.5, -0.5, -1).applyEuler(camera.rotation);
+                startPos.add(offset);
+                
+                dir = new THREE.Vector3();
+                camera.getWorldDirection(dir);
             } else {
-                teammateBullets.push(bullet);
+                startPos = shooter.mesh.position.clone().add(new THREE.Vector3(0,2,0));
+                dir = new THREE.Vector3(0,0,1).applyQuaternion(shooter.mesh.quaternion);
             }
-        }
-        
-        function handleRespawn(type) {
-            setTimeout(() => {
-                spawnBot(type);
-            }, respawnTime);
+
+            const ball = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshBasicMaterial({ color: isPlayer ? 0xffff00 : 0xff0000 }));
+            ball.position.copy(startPos);
+            scene.add(ball);
+
+            projectiles.push({
+                mesh: ball,
+                vel: dir.multiplyScalar(100),
+                owner: isPlayer ? 'player' : 'bot',
+                team: isPlayer ? 'blue' : shooter.team,
+                life: 2,
+                dmg: isPlayer ? player.weapons[player.curWepIdx].dmg : 10
+            });
         }
 
-        function handlePlayerDeath() {
-            showStatusMessage("Öldün! Yeniden doğuyorsun...", 'error');
-            setTimeout(() => {
-                const spawnPoint = teammateSpawnPoints[Math.floor(Math.random() * teammateSpawnPoints.length)];
-                camera.position.copy(spawnPoint);
-                playerHealth = 100;
-                playerHealthElement.innerText = playerHealth;
-                hideStatusMessage();
-            }, respawnTime);
-        }
-        
-        function updateBullets() {
-            // Player bullets
-            for(let i = playerBullets.length - 1; i >= 0; i--) {
-                const bullet = playerBullets[i];
-                bullet.position.add(bullet.velocity.clone().multiplyScalar(0.016));
+        function updateProjectiles(delta) {
+            // Raycaster'a kamera ata (Sprite hatasını önlemek için)
+            raycaster.camera = camera;
+
+            for(let i=projectiles.length-1; i>=0; i--) {
+                const p = projectiles[i];
+                p.life -= delta;
+                if(p.life <= 0) { scene.remove(p.mesh); projectiles.splice(i,1); continue; }
+
+                const prev = p.mesh.position.clone();
+                p.mesh.position.add(p.vel.clone().multiplyScalar(delta));
+
+                // Raycast
+                const dir = p.vel.clone().normalize();
+                const dist = p.mesh.position.distanceTo(prev);
+                raycaster.set(prev, dir);
                 
-                if (bullet.position.distanceTo(camera.position) > 300) {
-                    scene.remove(bullet);
-                    playerBullets.splice(i, 1);
+                // Hedefler
+                const targets = [];
+                bots.forEach(b => { if(b.alive && b.team !== p.team) targets.push(b.mesh); });
+                
+                // Basit Player Hit
+                if(p.owner !== 'player' && p.mesh.position.distanceTo(camera.position) < 2) {
+                    player.hp -= 10;
+                    updateHUD();
+                    scene.remove(p.mesh); projectiles.splice(i,1);
+                    if(player.hp <= 0) { alert("ÖLDÜN!"); location.reload(); }
                     continue;
                 }
-                
-                let hitTarget = false;
-                
-                for(let j = enemies.length - 1; j >= 0; j--) {
-                    const enemy = enemies[j];
-                    if (bullet.position.distanceTo(enemy.position) < 1.5) {
-                        enemy.health -= 25;
-                        if (enemy.health <= 0) {
-                            scene.remove(enemy);
-                            enemies.splice(j, 1);
-                            handleRespawn('enemy');
+
+                const hits = raycaster.intersectObjects(targets, true);
+                if(hits.length > 0 && hits[0].distance < dist) {
+                    const hitObj = hits[0].object;
+                    // Parent'ı bul
+                    let bot = bots.find(b => b.mesh === hitObj || b.mesh === hitObj.parent);
+                    
+                    if(bot) {
+                        let dmg = p.dmg;
+                        if(hitObj.userData.isHead) dmg *= 2; // Headshot
+                        
+                        bot.hp -= dmg;
+                        bot.hpMesh.scale.x = Math.max(0, bot.hp/100);
+                        
+                        if(p.owner === 'player') {
+                            const marker = document.getElementById('hit-marker');
+                            marker.style.opacity = 1;
+                            setTimeout(()=>marker.style.opacity=0, 100);
                         }
-                        scene.remove(bullet);
-                        playerBullets.splice(i, 1);
-                        hitTarget = true;
-                        break;
-                    }
-                }
-                if (hitTarget) continue;
-            }
-            
-            // Enemy bullets
-            for(let i = enemyBullets.length - 1; i >= 0; i--) {
-                const bullet = enemyBullets[i];
-                bullet.position.add(bullet.velocity.clone().multiplyScalar(0.016));
 
-                if (bullet.position.distanceTo(camera.position) > 300) {
-                    scene.remove(bullet);
-                    enemyBullets.splice(i, 1);
-                    continue;
-                }
-                
-                if (bullet.position.distanceTo(camera.position) < 0.5) {
-                    playerHealth -= 10;
-                    playerHealthElement.innerText = playerHealth;
-                    if (playerHealth <= 0) {
-                        handlePlayerDeath();
-                        return;
-                    }
-                    scene.remove(bullet);
-                    enemyBullets.splice(i, 1);
-                    continue;
-                }
-                
-                let hitTeammate = false;
-                for(let j = teammates.length - 1; j >= 0; j--) {
-                    const teammate = teammates[j];
-                    if (bullet.position.distanceTo(teammate.position) < 1.5) {
-                        teammate.health -= 10;
-                        if (teammate.health <= 0) {
-                            scene.remove(teammate);
-                            teammates.splice(j, 1);
-                            handleRespawn('teammate');
+                        if(bot.hp <= 0) {
+                            bot.alive = false;
+                            bot.mesh.visible = false;
+                            if(bot.team === 'red') {
+                                scores.blue++;
+                                userData.money += 20;
+                                saveData();
+                            } else scores.red++;
+                            
+                            document.getElementById('score-blue').innerText = scores.blue;
+                            document.getElementById('score-red').innerText = scores.red;
+                            
+                            addNotif("DÜŞMAN İNDİRİLDİ");
+                            
+                            if(scores.blue >= CONFIG.WIN_SCORE) {
+                                document.getElementById('game-over-screen').style.display = 'flex';
+                                document.getElementById('end-reward').innerText = "500";
+                                userData.money += 500; saveData();
+                            }
+
+                            setTimeout(() => {
+                                bot.alive = true; bot.hp = 100; bot.mesh.visible = true;
+                                const x = (Math.random()-0.5)*400;
+                                const z = (Math.random()-0.5)*400;
+                                bot.mesh.position.set(x, getTerrainY(x,z)+3, z);
+                                bot.hpMesh.scale.x = 1;
+                            }, 3000);
                         }
-                        scene.remove(bullet);
-                        enemyBullets.splice(i, 1);
-                        hitTeammate = true;
-                        break;
                     }
+                    scene.remove(p.mesh); projectiles.splice(i,1);
                 }
-                if (hitTeammate) continue;
-            }
-
-            // Teammate bullets
-            for(let i = teammateBullets.length - 1; i >= 0; i--) {
-                const bullet = teammateBullets[i];
-                bullet.position.add(bullet.velocity.clone().multiplyScalar(0.016));
-
-                if (bullet.position.distanceTo(camera.position) > 300) {
-                    scene.remove(bullet);
-                    teammateBullets.splice(i, 1);
-                    continue;
-                }
-
-                let hitEnemy = false;
-                for(let j = enemies.length - 1; j >= 0; j--) {
-                    const enemy = enemies[j];
-                    if (bullet.position.distanceTo(enemy.position) < 1.5) {
-                        enemy.health -= 25;
-                        if (enemy.health <= 0) {
-                            scene.remove(enemy);
-                            enemies.splice(j, 1);
-                            handleRespawn('enemy');
-                        }
-                        scene.remove(bullet);
-                        teammateBullets.splice(i, 1);
-                        hitEnemy = true;
-                        break;
-                    }
-                }
-                if (hitEnemy) continue;
             }
         }
+
+        // --- UI UTILS ---
+        window.toggleMarket = (show) => document.getElementById('market-overlay').style.display = show ? 'flex' : 'none';
         
-        initGame();
+        function renderMarket() {
+            const grid = document.getElementById('market-grid');
+            grid.innerHTML = '';
+            WEAPONS.forEach(w => {
+                if(w.type==='secondary') return;
+                const div = document.createElement('div');
+                const owned = userData.inventory.includes(w.id);
+                div.className = `market-item ${owned?'owned':''}`;
+                div.innerHTML = `<h3>${w.name}</h3><p>Hasar: ${w.dmg}</p><p>${owned?'SAHİPSİN':w.price+' NC'}</p>`;
+                div.onclick = () => {
+                    if(!owned && userData.money >= w.price) {
+                        userData.money -= w.price;
+                        userData.inventory.push(w.id);
+                        saveData();
+                    } else if(owned) {
+                        userData.loadout.primary = w.id;
+                        saveData();
+                        alert("Kuşanıldı: " + w.name);
+                    }
+                };
+                grid.appendChild(div);
+            });
+        }
+
+        function reload() { player.ammo = player.weapons[player.curWepIdx].mag; updateHUD(); }
+        function toggleScope() {
+            input.scope = !input.scope;
+            camera.fov = input.scope ? 30 : 75;
+            camera.updateProjectionMatrix();
+        }
+        function updateHUD() {
+            document.getElementById('hud-ammo').innerText = player.ammo;
+            document.getElementById('hud-hp').style.width = player.hp + '%';
+        }
+        function addNotif(text) {
+            const d = document.createElement('div'); d.className = 'notif'; d.innerText = text;
+            document.getElementById('notification-area').appendChild(d);
+            setTimeout(()=>d.remove(), 3000);
+        }
+        function onWindowResize() {
+            camera.aspect = window.innerWidth/window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
     </script>
 </body>
 </html>
